@@ -25,6 +25,13 @@ python -m pytest
 python -m uvicorn app.main:app --reload --port 8000
 ```
 
+Milvus is optional in the first phase. When it is not configured, `/healthz` reports
+`"milvus": "disabled"`. To verify the reserved vector database connection locally:
+
+```bash
+python -m uvicorn app.main:app --env-file .env --reload --port 8000
+```
+
 ## API
 
 ```bash

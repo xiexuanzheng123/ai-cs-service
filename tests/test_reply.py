@@ -54,3 +54,11 @@ def test_unknown_question_returns_fallback() -> None:
     assert payload["transfer_to_human"] is False
     assert payload["reply"]
 
+
+def test_healthz_reports_milvus_status() -> None:
+    response = client.get("/healthz")
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["status"] == "ok"
+    assert payload["milvus"] in {"disabled", "ok"}
