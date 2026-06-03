@@ -6,6 +6,8 @@ The first version is deterministic and rule-based. It gives the Go gateway a sta
 
 ## Setup
 
+推荐从 workspace 根目录按统一顺序启动，见 `../README.md`。
+
 ```bash
 python3 -m venv .venv
 source .venv/bin/activate
