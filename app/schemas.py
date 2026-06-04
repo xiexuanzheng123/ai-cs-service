@@ -25,6 +25,7 @@ class RetrievedDocument(BaseModel):
 class AIReplyResponse(BaseModel):
     reply: str
     intent: str
+    route: str = "ai_reply"
     risk_level: Literal["low", "medium", "high"]
     transfer_to_human: bool
     retrieved_docs: list[RetrievedDocument] = Field(default_factory=list)
