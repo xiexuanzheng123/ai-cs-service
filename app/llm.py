@@ -21,6 +21,7 @@ class DashScopeChatClient:
         self.transport = transport or self._post
 
     def reply(self, message: str) -> str:
+        # 这里是纯模型兜底回复；转人工、RAG 直答等路由决策已经在 Gateway/Orchestrator 前置处理。
         payload = {
             "model": self.model,
             "messages": [

@@ -34,6 +34,7 @@ class KnowledgeVectorStore:
         if len(chunks) != len(embeddings):
             raise ValueError("chunks and embeddings length mismatch")
 
+        # 使用 chunk_id 作为 Milvus 主键，重复同步同一知识时会覆盖旧向量。
         data = []
         items = []
         for chunk, embedding in zip(chunks, embeddings, strict=True):
@@ -54,6 +55,7 @@ class KnowledgeVectorStore:
         return items
 
     def search(self, embedding: list[float], top_k: int) -> list[dict]:
+        # 只返回召回标识和分数；完整答案内容由 Gateway 再回查 MySQL。
         results = self._client.search(
             collection_name=self.collection_name,
             data=[embedding],
@@ -82,6 +84,7 @@ class KnowledgeVectorStore:
 
         from pymilvus import DataType
 
+        # 首次启动时自动创建 collection，维度必须与 embedding 模型输出一致。
         schema = self._client.create_schema(auto_id=False, enable_dynamic_field=False)
         schema.add_field(field_name="id", datatype=DataType.VARCHAR, is_primary=True, max_length=128)
         schema.add_field(field_name="chunk_id", datatype=DataType.VARCHAR, max_length=128)

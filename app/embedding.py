@@ -24,6 +24,7 @@ class DashScopeEmbeddingClient:
         return self.embed_batch([text])[0]
 
     def embed_batch(self, texts: list[str]) -> list[list[float]]:
+        # DashScope embedding 接口支持批量文本；知识库同步时批量调用可以减少网络往返。
         payload = {
             "model": self.model,
             "input": texts,
@@ -49,6 +50,7 @@ class DashScopeEmbeddingClient:
         if not isinstance(data, list):
             raise ValueError("embedding response missing data")
 
+        # 这里严格校验返回结构，避免空向量或非数字值进入 Milvus 后难以排查。
         embeddings: list[list[float]] = []
         for item in data:
             if not isinstance(item, dict):

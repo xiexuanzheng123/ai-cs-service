@@ -9,6 +9,8 @@ class AIOrchestrator:
     def reply(self, request: AIReplyRequest) -> AIReplyResponse:
         result = classify_message(request.message)
         reply = result.reply
+
+        # 高风险问题不调用 LLM，直接沿用规则结果转人工，避免模型生成越权处理建议。
         if self.chat_client is not None and not result.transfer_to_human:
             reply = self.chat_client.reply(request.message)
 

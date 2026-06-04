@@ -20,6 +20,8 @@ from app.vector_store import KnowledgeVectorStore, MilvusHealthChecker
 
 app = FastAPI(title="AI Customer Service AI Service", version="0.1.0")
 settings = load_settings()
+
+# Python 服务只承接模型相关能力：LLM、embedding、Milvus；业务编排仍由 Go Gateway 控制。
 chat_client = (
     DashScopeChatClient(
         api_url=settings.ai_api_url,
@@ -72,6 +74,7 @@ def healthz() -> dict[str, str]:
 
 @app.post("/v1/ai/reply", response_model=AIReplyResponse)
 def reply(request: AIReplyRequest) -> AIReplyResponse:
+    # Gateway 在 RAG 低置信或需要模型兜底时调用这里。
     return orchestrator.reply(request)
 
 
@@ -103,6 +106,7 @@ def vector_chunks_upsert(request: VectorUpsertRequest) -> VectorUpsertResponse:
     embedding_client = get_embedding_client()
     vector_store = get_vector_store()
     chunks = [chunk.model_dump() for chunk in request.chunks]
+    # 写入链路：chunk 文本 -> embedding -> Milvus，vector_id 再由 Gateway 回写 MySQL。
     embeddings = embedding_client.embed_batch([chunk["chunk_text"] for chunk in chunks])
     items = vector_store.upsert_chunks(chunks, embeddings)
     dimension = len(embeddings[0]) if embeddings else 0
@@ -117,6 +121,7 @@ def vector_chunks_upsert(request: VectorUpsertRequest) -> VectorUpsertResponse:
 def vector_search(request: VectorSearchRequest) -> VectorSearchResponse:
     embedding_client = get_embedding_client()
     vector_store = get_vector_store()
+    # 检索链路：用户问题先转 embedding，再用 Milvus 找最相似的知识 chunk。
     embedding = embedding_client.embed_text(request.query)
     items = vector_store.search(embedding, request.top_k)
     return VectorSearchResponse(
