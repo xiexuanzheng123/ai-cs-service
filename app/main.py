@@ -3,7 +3,9 @@ from fastapi import FastAPI
 from app.config import load_settings
 from app.embedding import DashScopeEmbeddingClient
 from app.llm import DashScopeChatClient
+from app.keyword_store import KnowledgeKeywordStore, OpenSearchHealthChecker
 from app.orchestrator import AIOrchestrator
+from app.rerank import DashScopeRerankClient
 from app.schemas import (
     AIReplyRequest,
     AIReplyResponse,
@@ -11,6 +13,12 @@ from app.schemas import (
     EmbeddingBatchResponse,
     EmbeddingTextRequest,
     EmbeddingTextResponse,
+    KeywordSearchRequest,
+    KeywordSearchResponse,
+    KeywordUpsertRequest,
+    KeywordUpsertResponse,
+    RerankRequest,
+    RerankResponse,
     VectorSearchRequest,
     VectorSearchResponse,
     VectorUpsertRequest,
@@ -27,6 +35,7 @@ chat_client = (
         api_url=settings.ai_api_url,
         api_key=settings.ai_api_key,
         model=settings.ai_chat_model,
+        fallback_model=settings.ai_chat_fallback_model,
     )
     if settings.ai_api_url and settings.ai_api_key
     else None
@@ -37,6 +46,7 @@ milvus_checker = (
     if settings.milvus_uri
     else None
 )
+opensearch_checker = OpenSearchHealthChecker(settings.opensearch_url) if settings.opensearch_url else None
 if settings.milvus_uri:
     app.state.vector_store = KnowledgeVectorStore(
         uri=settings.milvus_uri,
@@ -54,6 +64,21 @@ if settings.ai_embedding_url and settings.ai_api_key:
     )
 else:
     app.state.embedding_client = None
+if settings.ai_rerank_url and settings.ai_api_key:
+    app.state.rerank_client = DashScopeRerankClient(
+        api_url=settings.ai_rerank_url,
+        api_key=settings.ai_api_key,
+        model=settings.ai_rerank_model,
+    )
+else:
+    app.state.rerank_client = None
+if settings.opensearch_url:
+    app.state.keyword_store = KnowledgeKeywordStore(
+        base_url=settings.opensearch_url,
+        index_name=settings.opensearch_index,
+    )
+else:
+    app.state.keyword_store = None
 
 
 @app.get("/healthz")
@@ -66,9 +91,18 @@ def healthz() -> dict[str, str]:
         except Exception:
             milvus_status = "error"
 
+    opensearch_status = "disabled"
+    if opensearch_checker is not None:
+        try:
+            opensearch_checker.ping()
+            opensearch_status = "ok"
+        except Exception:
+            opensearch_status = "error"
+
     return {
-        "status": "error" if milvus_status == "error" else "ok",
+        "status": "error" if "error" in (milvus_status, opensearch_status) else "ok",
         "milvus": milvus_status,
+        "opensearch": opensearch_status,
     }
 
 
@@ -131,6 +165,42 @@ def vector_search(request: VectorSearchRequest) -> VectorSearchResponse:
     )
 
 
+@app.post("/keyword/chunks/upsert", response_model=KeywordUpsertResponse)
+def keyword_chunks_upsert(request: KeywordUpsertRequest) -> KeywordUpsertResponse:
+    keyword_store = get_keyword_store()
+    chunks = [chunk.model_dump() for chunk in request.chunks]
+    # 关键词索引用 OpenSearch 承接 BM25，和 Milvus 共用同一批 chunk 文本。
+    items = keyword_store.upsert_chunks(chunks)
+    return KeywordUpsertResponse(items=items, index=keyword_store.index_name)
+
+
+@app.post("/keyword/search", response_model=KeywordSearchResponse)
+def keyword_search(request: KeywordSearchRequest) -> KeywordSearchResponse:
+    keyword_store = get_keyword_store()
+    items = keyword_store.search(request.query, request.top_k)
+    return KeywordSearchResponse(items=items, index=keyword_store.index_name)
+
+
+@app.post("/rerank", response_model=RerankResponse)
+def rerank(request: RerankRequest) -> RerankResponse:
+    rerank_client = get_rerank_client()
+    documents = [document.text for document in request.documents]
+    results = rerank_client.rerank(request.query, documents, request.top_n)
+    items = []
+    for item in results:
+        index = item["index"]
+        if index < 0 or index >= len(request.documents):
+            continue
+        items.append(
+            {
+                "id": request.documents[index].id,
+                "index": index,
+                "score": item["score"],
+            }
+        )
+    return RerankResponse(items=items, model=rerank_client.model)
+
+
 def get_embedding_client() -> DashScopeEmbeddingClient:
     embedding_client = app.state.embedding_client
     if embedding_client is None:
@@ -143,3 +213,17 @@ def get_vector_store() -> KnowledgeVectorStore:
     if vector_store is None:
         raise RuntimeError("vector store is not configured")
     return vector_store
+
+
+def get_keyword_store() -> KnowledgeKeywordStore:
+    keyword_store = app.state.keyword_store
+    if keyword_store is None:
+        raise RuntimeError("keyword store is not configured")
+    return keyword_store
+
+
+def get_rerank_client() -> DashScopeRerankClient:
+    rerank_client = app.state.rerank_client
+    if rerank_client is None:
+        raise RuntimeError("rerank client is not configured")
+    return rerank_client

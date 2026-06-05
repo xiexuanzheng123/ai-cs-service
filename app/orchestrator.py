@@ -26,34 +26,42 @@ class AIOrchestrator:
         if passages:
             if self.chat_client is None:
                 raise RuntimeError("chat client is not configured for rag reply")
-            reply = self.chat_client.reply_with_knowledge(
+            llm_result = self.chat_client.reply_with_knowledge(
                 request.message,
                 passages,
                 history=[item.model_dump() for item in request.history],
             )
             return AIReplyResponse(
-                reply=reply,
+                reply=llm_result["reply"],
                 intent="rag_llm",
                 route="rag_llm",
                 risk_level="low",
                 transfer_to_human=False,
                 retrieved_docs=_passages_to_docs(passages),
                 suggestions=["有用", "没用", "转人工"],
+                model=llm_result["model"],
+                input_tokens=llm_result["input_tokens"],
+                output_tokens=llm_result["output_tokens"],
+                estimated_cost=llm_result["estimated_cost"],
             )
 
         if self.chat_client is not None:
-            reply = self.chat_client.reply(
+            llm_result = self.chat_client.reply(
                 request.message,
                 history=[item.model_dump() for item in request.history],
             )
             return AIReplyResponse(
-                reply=reply,
+                reply=llm_result["reply"],
                 intent=result.intent,
                 route="ai_reply",
                 risk_level=result.risk_level,
                 transfer_to_human=result.transfer_to_human,
                 retrieved_docs=[],
                 suggestions=result.suggestions,
+                model=llm_result["model"],
+                input_tokens=llm_result["input_tokens"],
+                output_tokens=llm_result["output_tokens"],
+                estimated_cost=llm_result["estimated_cost"],
             )
 
         return AIReplyResponse(
