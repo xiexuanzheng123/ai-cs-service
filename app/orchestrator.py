@@ -95,7 +95,7 @@ def _passages_to_docs(passages: list[dict[str, Any]]) -> list[RetrievedDocument]
     docs: list[RetrievedDocument] = []
     for passage in passages:
         knowledge_id = str(passage.get("knowledge_id") or passage.get("chunk_id") or "").strip()
-        title = str(passage.get("title") or knowledge_id or "knowledge").strip()
+        question = str(passage.get("question") or knowledge_id or "knowledge").strip()
         score = passage.get("score")
         if not isinstance(score, (int, float)):
             score = 0.0
@@ -104,7 +104,7 @@ def _passages_to_docs(passages: list[dict[str, Any]]) -> list[RetrievedDocument]
         docs.append(
             RetrievedDocument(
                 doc_id=knowledge_id,
-                title=title,
+                question=question,
                 score=float(score),
             )
         )

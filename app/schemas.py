@@ -18,7 +18,7 @@ class AIReplyRequest(BaseModel):
 
 class RetrievedDocument(BaseModel):
     doc_id: str
-    title: str
+    question: str
     score: float
 
 
