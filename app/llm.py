@@ -27,7 +27,12 @@ class DashScopeChatClient:
         self.model = model
         self.transport = transport or self._post
 
-    def reply_with_knowledge(self, message: str, passages: list[dict[str, Any]]) -> str:
+    def reply_with_knowledge(
+        self,
+        message: str,
+        passages: list[dict[str, Any]],
+        history: list[dict[str, str]] | None = None,
+    ) -> str:
         knowledge_block = format_retrieved_passages(passages)
         if not knowledge_block.strip():
             raise ValueError("retrieved passages are empty")
@@ -37,6 +42,7 @@ class DashScopeChatClient:
             "model": self.model,
             "messages": [
                 {"role": "system", "content": system_content},
+                *_valid_history(history),
                 {"role": "user", "content": message},
             ],
             "temperature": 0.2,
@@ -48,7 +54,7 @@ class DashScopeChatClient:
         response = self.transport(self.api_url, headers, payload)
         return self._parse_reply(response)
 
-    def reply(self, message: str) -> str:
+    def reply(self, message: str, history: list[dict[str, str]] | None = None) -> str:
         payload = {
             "model": self.model,
             "messages": [
@@ -56,6 +62,7 @@ class DashScopeChatClient:
                     "role": "system",
                     "content": "你是唱吧智能客服。请用简洁、准确的中文回答用户问题；涉及投诉、退款、账号删除、实名修改等高风险操作时，提示需要转人工。",
                 },
+                *_valid_history(history),
                 {"role": "user", "content": message},
             ],
             "temperature": 0.2,
@@ -86,3 +93,16 @@ class DashScopeChatClient:
         if not isinstance(content, str) or not content.strip():
             raise ValueError("chat response missing content")
         return content.strip()
+
+
+def _valid_history(history: list[dict[str, str]] | None) -> list[dict[str, str]]:
+    if not history:
+        return []
+    messages: list[dict[str, str]] = []
+    for item in history[-6:]:
+        role = item.get("role")
+        content = str(item.get("content") or "").strip()
+        if role not in {"user", "assistant"} or not content:
+            continue
+        messages.append({"role": role, "content": content})
+    return messages

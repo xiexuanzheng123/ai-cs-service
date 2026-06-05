@@ -26,7 +26,11 @@ class AIOrchestrator:
         if passages:
             if self.chat_client is None:
                 raise RuntimeError("chat client is not configured for rag reply")
-            reply = self.chat_client.reply_with_knowledge(request.message, passages)
+            reply = self.chat_client.reply_with_knowledge(
+                request.message,
+                passages,
+                history=[item.model_dump() for item in request.history],
+            )
             return AIReplyResponse(
                 reply=reply,
                 intent="rag_llm",
@@ -38,7 +42,10 @@ class AIOrchestrator:
             )
 
         if self.chat_client is not None:
-            reply = self.chat_client.reply(request.message)
+            reply = self.chat_client.reply(
+                request.message,
+                history=[item.model_dump() for item in request.history],
+            )
             return AIReplyResponse(
                 reply=reply,
                 intent=result.intent,
