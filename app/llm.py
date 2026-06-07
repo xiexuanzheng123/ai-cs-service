@@ -7,7 +7,7 @@ from app.rag_prompt import format_retrieved_passages
 
 ChatTransport = Callable[[str, dict[str, str], dict[str, Any]], dict[str, Any]]
 
-RAG_SYSTEM_PROMPT = """你是唱吧智能客服。请仅根据下面「知识库参考」回答用户问题。
+RAG_SYSTEM_PROMPT = """你是智能客服助手。请仅根据下面「知识库参考」回答用户问题。
 - 只能使用参考中的事实，不要编造客服电话、工作时间、退款政策、处理流程等。
 - 参考不足以回答时，明确说明暂未查到相关信息，并建议用户补充描述或转人工。
 - 涉及投诉、退款、账号删除、实名修改等高风险操作时，提示需要转人工。
@@ -62,7 +62,7 @@ class DashScopeChatClient:
             "messages": [
                 {
                     "role": "system",
-                    "content": "你是唱吧智能客服。请用简洁、准确的中文回答用户问题；涉及投诉、退款、账号删除、实名修改等高风险操作时，提示需要转人工。",
+                    "content": "你是智能客服助手。请用简洁、准确的中文回答用户问题；涉及投诉、退款、账号删除、实名修改等高风险操作时，提示需要转人工。",
                 },
                 *_valid_history(history),
                 {"role": "user", "content": message},

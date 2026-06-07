@@ -29,10 +29,10 @@ def load_settings() -> Settings:
     return Settings(
         milvus_uri=os.getenv("MILVUS_URI") or None,
         milvus_token=os.getenv("MILVUS_TOKEN") or None,
-        milvus_collection=os.getenv("MILVUS_COLLECTION") or "ai_cs_knowledge_chunk",
+        milvus_collection=os.getenv("MILVUS_COLLECTION") or "ai_cs_github_knowledge_chunk",
         embedding_dimension=int(os.getenv("EMBEDDING_DIMENSION") or "1024"),
         opensearch_url=os.getenv("OPENSEARCH_URL") or None,
-        opensearch_index=os.getenv("OPENSEARCH_INDEX") or "ai_cs_knowledge_chunk",
+        opensearch_index=os.getenv("OPENSEARCH_INDEX") or "ai_cs_github_knowledge_chunk",
         ai_api_url=ai_api_url,
         ai_embedding_url=os.getenv("AI_EMBEDDING_URL") or infer_embedding_url(ai_api_url),
         ai_rerank_url=os.getenv("AI_RERANK_URL") or infer_rerank_url(ai_api_url),
